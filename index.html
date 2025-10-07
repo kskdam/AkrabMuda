@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi Lokasi...</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; margin: 1em; }
+    </style>
+</head>
+<body>
+    <h1 id="status">Meminta izin lokasi Anda...</h1>
+
+    <script>
+        window.onload = function() {
+            // --- GANTI DENGAN URL WEBHOOK ANDA ---
+            const webhookUrl = 'https://n8n-aa64.bgd.my.id/webhook/AkrabMuda';
+            // ------------------------------------
+
+            const statusElement = document.getElementById('status');
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // --- FUNGSI HITUNG JARAK (PINDAHAN DARI N8N) ---
+            function getDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371e3; // Jari-jari Bumi dalam meter
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c; // Jarak dalam meter
+            }
+
+            if (navigator.geolocation) {
+                // Meminta lokasi dengan akurasi tinggi
+                navigator.geolocation.getCurrentPosition(success, error, { enableHighAccuracy: true });
+            } else {
+                statusElement.textContent = "Browser Anda tidak mendukung Geolocation.";
+            }
+
+            function success(position) {
+                statusElement.textContent = "Lokasi ditemukan! Memverifikasi...";
+
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                
+                // --- PENGATURAN LOKASI TARGET (UBAH DI SINI) ---
+                const targetLatitude = -7.813177844993957;  // Ganti dengan Latitude lokasi Anda
+                const targetLongitude = 110.34515139257198; // Ganti dengan Longitude lokasi Anda-7.813177844993957, 110.34515139257198
+                const allowedRadiusInMeters = 20; // Ganti toleransi jarak (dalam meter)
+
+                // Hitung jarak dari lokasi target
+                const distance = getDistance(latitude, longitude, targetLatitude, targetLongitude);
+
+                // --- PENGECEKAN LOKASI ---
+                if (distance <= allowedRadiusInMeters) {
+                    // JIKA LOKASI BENAR: Lanjutkan kirim data ke n8n
+                    statusElement.textContent = "Lokasi terverifikasi! Mengirim data absensi...";
+
+                    urlParams.append('latitude', latitude);
+                    urlParams.append('longitude', longitude);
+
+                    fetch(`${webhookUrl}?${urlParams.toString()}`)
+                        .then(response => {
+                            if (response.ok) {
+                                statusElement.textContent = "Absensi berhasil direkam! Terima kasih.";
+                            } else {
+                                statusElement.textContent = "Gagal mengirim data ke server.";
+                            }
+                        })
+                        .catch(error => {
+                            statusElement.textContent = "Terjadi error saat mengirim data.";
+                            console.error('Error:', error);
+                        });
+
+                } else {
+                    // JIKA LOKASI SALAH: Tampilkan pesan error dan JANGAN kirim data
+                    statusElement.textContent = `Absensi Gagal: Anda berada ${Math.round(distance)} meter dari lokasi yang ditentukan.`;
+                }
+            }
+
+            function error(err) {
+                statusElement.textContent = "Gagal mendapatkan lokasi. Pastikan GPS aktif dan Anda memberikan izin.";
+                console.warn(`ERROR(${err.code}): ${err.message}`);
+            }
+        };
+    </script>
+</body>
+</html>
