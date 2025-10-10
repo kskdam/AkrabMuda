@@ -61,7 +61,7 @@
                     urlParams.append('latitude', latitude);
                     urlParams.append('longitude', longitude);
 
-                    urlParams.append('Kedatangan', new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }));
+                    urlParams.append('Kedatangan', new Date().toISOString());
 
                     fetch(`${webhookUrl}?${urlParams.toString()}`)
                         .then(response => {
