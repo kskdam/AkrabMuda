@@ -22,7 +22,7 @@
             max-width: 500px;
             border: 2px solid #00ff7f;
             border-radius: 8px;
-            overflow: hidden; /* Agar video tidak keluar dari border */
+            overflow: hidden;
         }
         #status {
             margin-top: 20px;
@@ -38,7 +38,7 @@
             background-color: #00ff7f;
             color: #111;
             margin-top: 20px;
-            display: none; /* Sembunyikan tombol di awal */
+            display: none;
         }
     </style>
 </head>
@@ -60,70 +60,54 @@
 
             function startScanner() {
                 statusElement.textContent = "Arahkan kamera ke QR Code Peserta";
-                scanAgainButton.style.display = 'none'; // Sembunyikan tombol saat scan
+                scanAgainButton.style.display = 'none';
                 
                 html5QrCode.start(
-                    { facingMode: "environment" }, // Gunakan kamera belakang
+                    { facingMode: "environment" },
                     {
                         fps: 10,
                         qrbox: { width: 250, height: 250 }
                     },
                     onScanSuccess,
-                    (errorMessage) => { /* Abaikan error, tidak perlu ditampilkan */ }
+                    (errorMessage) => { /* Abaikan error */ }
                 ).catch((err) => {
                     statusElement.textContent = "Gagal memulai kamera. Pastikan Anda memberikan izin.";
                 });
             }
 
             function onScanSuccess(decodedText, decodedResult) {
-                // Hentikan scanner agar tidak scan berulang kali
+                // Hentikan scanner setelah berhasil
                 html5QrCode.stop().then(() => {
-                    statusElement.textContent = "QR Code terdeteksi! Mendapatkan lokasi panitia...";
-                    
-                    // Ambil data nama dari hasil scan untuk ditampilkan
                     const params = new URLSearchParams(decodedText);
                     const namaPeserta = params.get('Nama') || 'Peserta';
+                    statusElement.textContent = `Mengirim data untuk ${namaPeserta}...`;
 
-                    // Minta lokasi panitia saat ini
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            const latitude = position.coords.latitude;
-                            const longitude = position.coords.longitude;
-                            const timestamp = new Date().toISOString();
+                    // Buat timestamp saat ini
+                    const timestamp = new Date().toISOString();
 
-                            // Gabungkan data dari QR code dengan data lokasi & waktu
-                            const finalData = `${decodedText}&latitude=${latitude}&longitude=${longitude}&Kedatangan=${timestamp}`;
-                            
-                            statusElement.textContent = `Mengirim data untuk ${namaPeserta}...`;
+                    // Gabungkan data dari QR code dengan timestamp
+                    // Data lokasi (latitude & longitude) sudah dihapus
+                    const finalData = `${decodedText}&Kedatangan=${timestamp}`;
 
-                            // Kirim data ke webhook n8n
-                            fetch(`${webhookUrl}?${finalData}`)
-                                .then(response => {
-                                    if (response.ok) {
-                                        statusElement.textContent = `✅ Absensi untuk ${namaPeserta} berhasil direkam!`;
-                                    } else {
-                                        statusElement.textContent = `❌ Gagal mengirim data untuk ${namaPeserta}.`;
-                                    }
-                                    scanAgainButton.style.display = 'block'; // Tampilkan tombol scan lagi
-                                })
-                                .catch(error => {
-                                    statusElement.textContent = "Terjadi error saat mengirim data.";
-                                    scanAgainButton.style.display = 'block';
-                                });
-                        },
-                        () => {
-                            statusElement.textContent = "Gagal mendapatkan lokasi. Pastikan GPS aktif.";
+                    // Kirim data ke webhook n8n
+                    fetch(`${webhookUrl}?${finalData}`)
+                        .then(response => {
+                            if (response.ok) {
+                                statusElement.textContent = `✅ Absensi untuk ${namaPeserta} berhasil direkam!`;
+                            } else {
+                                statusElement.textContent = `❌ Gagal mengirim data untuk ${namaPeserta}.`;
+                            }
+                            scanAgainButton.style.display = 'block'; // Tampilkan tombol scan lagi
+                        })
+                        .catch(error => {
+                            statusElement.textContent = "Terjadi error saat mengirim data.";
                             scanAgainButton.style.display = 'block';
-                        },
-                        { enableHighAccuracy: true }
-                    );
+                        });
                 });
             }
             
-            // Event listener untuk tombol "Scan Lagi"
             scanAgainButton.addEventListener('click', startScanner);
 
-            // Mulai scanner saat halaman dimuat
             startScanner();
         });
     </script>
