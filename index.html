@@ -3,88 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verifikasi Lokasi...</title>
+    <title>Verifikasi Panitia...</title>
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; margin: 1em; }
     </style>
 </head>
 <body>
-    <h1 id="status">Meminta izin lokasi Anda...</h1>
+    <h1 id="status">Verifikasi Panitia...</h1>
 
     <script>
         window.onload = function() {
-            // --- GANTI DENGAN URL WEBHOOK ANDA ---
-            const webhookUrl = 'https://n8n-aa64.bgd.my.id/webhook/AkrabMuda';
-            // ------------------------------------
+            // --- PENGATURAN WAJIB DIISI ---
+            const correctPin = "0011354"; // GANTI DENGAN PIN RAHASIA ANDA
+            // -----------------------------
 
             const statusElement = document.getElementById('status');
-            const urlParams = new URLSearchParams(window.location.search);
+            const userPin = prompt("Silakan masukkan PIN Panitia untuk melanjutkan:");
 
-            // --- FUNGSI HITUNG JARAK (PINDAHAN DARI N8N) ---
-            function getDistance(lat1, lon1, lat2, lon2) {
-                const R = 6371e3; // Jari-jari Bumi dalam meter
-                const dLat = (lat2 - lat1) * Math.PI / 180;
-                const dLon = (lon2 - lon1) * Math.PI / 180;
-                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                          Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c; // Jarak dalam meter
-            }
-
-            if (navigator.geolocation) {
-                // Meminta lokasi dengan akurasi tinggi
-                navigator.geolocation.getCurrentPosition(success, error, { enableHighAccuracy: true });
-            } else {
-                statusElement.textContent = "Browser Anda tidak mendukung Geolocation.";
-            }
-
-            function success(position) {
-                statusElement.textContent = "Lokasi ditemukan! Memverifikasi...";
-
-                const latitude = position.coords.latitude;
-                const longitude = position.coords.longitude;
+            // --- PENGECEKAN PIN ---
+            if (userPin === correctPin) {
+                // JIKA PIN BENAR, LANJUTKAN SELURUH PROSES ABSENSI
+                statusElement.textContent = "PIN Benar! Meminta izin lokasi Anda...";
                 
-                // --- PENGATURAN LOKASI TARGET (UBAH DI SINI) ---
-                const targetLatitude = -7.812933405822422;  // Ganti dengan Latitude lokasi Anda
-                const targetLongitude = 110.34524382421723; // Ganti dengan Longitude lokasi Anda, GSM -7.818774770914163, 110.36627589612237, rmh -7.812933405822422, 110.34524382421723, kampus -7.808960514900425, 110.32200196580159
-                const allowedRadiusInMeters = 100; // Ganti toleransi jarak (dalam meter)
+                // --- KODE LAMA ANDA DIMULAI DI SINI ---
+                const webhookUrl = 'https://n8n-aa64.bgd.my.id/webhook/AkrabMuda';
+                const urlParams = new URLSearchParams(window.location.search);
 
-                // Hitung jarak dari lokasi target
-                const distance = getDistance(latitude, longitude, targetLatitude, targetLongitude);
-
-                // --- PENGECEKAN LOKASI ---
-                if (distance <= allowedRadiusInMeters) {
-                    // JIKA LOKASI BENAR: Lanjutkan kirim data ke n8n
-                    statusElement.textContent = "Lokasi terverifikasi! Mengirim data absensi...";
-
-                    urlParams.append('latitude', latitude);
-                    urlParams.append('longitude', longitude);
-
-                    urlParams.append('Kedatangan', new Date().toISOString());
-
-                    fetch(`${webhookUrl}?${urlParams.toString()}`)
-                        .then(response => {
-                            if (response.ok) {
-                                statusElement.textContent = "Absensi berhasil direkam! Terima kasih.";
-                            } else {
-                                statusElement.textContent = "Gagal mengirim data ke server.";
-                            }
-                        })
-                        .catch(error => {
-                            statusElement.textContent = "Terjadi error saat mengirim data.";
-                            console.error('Error:', error);
-                        });
-
-                } else {
-                    // JIKA LOKASI SALAH: Tampilkan pesan error dan JANGAN kirim data
-                    statusElement.textContent = `Ea ngapain belum waktunya absen 😂🫵🏻 Jarakmu ${Math.round(distance)} meter dari lokasi yang ditentukan.`;
+                function getDistance(lat1, lon1, lat2, lon2) {
+                    const R = 6371e3;
+                    const dLat = (lat2 - lat1) * Math.PI / 180;
+                    const dLon = (lon2 - lon1) * Math.PI / 180;
+                    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    return R * c;
                 }
-            }
 
-            function error(err) {
-                statusElement.textContent = "Gagal mendapatkan lokasi. Pastikan GPS aktif dan Anda memberikan izin.";
-                console.warn(`ERROR(${err.code}): ${err.message}`);
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(success, error, { enableHighAccuracy: true });
+                } else {
+                    statusElement.textContent = "Browser Anda tidak mendukung Geolocation.";
+                }
+
+                function success(position) {
+                    statusElement.textContent = "Lokasi ditemukan! Memverifikasi...";
+
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    
+                    const targetLatitude = -7.812933405822422;
+                    const targetLongitude = 110.34524382421723;
+                    const allowedRadiusInMeters = 100;
+
+                    const distance = getDistance(latitude, longitude, targetLatitude, targetLongitude);
+
+                    if (distance <= allowedRadiusInMeters) {
+                        statusElement.textContent = "Lokasi terverifikasi! Mengirim data absensi...";
+
+                        urlParams.append('latitude', latitude);
+                        urlParams.append('longitude', longitude);
+                        urlParams.append('Kedatangan', new Date().toISOString());
+
+                        fetch(`${webhookUrl}?${urlParams.toString()}`)
+                            .then(response => {
+                                if (response.ok) {
+                                    statusElement.textContent = "Absensi berhasil direkam! Terima kasih.";
+                                } else {
+                                    statusElement.textContent = "Gagal mengirim data ke server.";
+                                }
+                            })
+                            .catch(error => {
+                                statusElement.textContent = "Terjadi error saat mengirim data.";
+                                console.error('Error:', error);
+                            });
+
+                    } else {
+                        statusElement.textContent = `Ea ngapain belum waktunya absen 😂🫵🏻 Jarakmu ${Math.round(distance)} meter dari lokasi yang ditentukan.`;
+                    }
+                }
+
+                function error(err) {
+                    statusElement.textContent = "Gagal mendapatkan lokasi. Pastikan GPS aktif dan Anda memberikan izin.";
+                    console.warn(`ERROR(${err.code}): ${err.message}`);
+                }
+                 // --- AKHIR DARI KODE LAMA ANDA ---
+
+            } else {
+                // JIKA PIN SALAH ATAU DIBATALKAN, TAMPILKAN PESAN ERROR
+                statusElement.textContent = "PIN Salah. Akses ditolak.";
             }
         };
     </script>
