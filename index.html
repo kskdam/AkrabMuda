@@ -23,29 +23,35 @@
             border: 2px solid #00ff7f;
             border-radius: 8px;
             overflow: hidden;
+            /* Sembunyikan scanner di awal */
+            display: none;
         }
         #status {
             margin-top: 20px;
             font-size: 1.2em;
             min-height: 50px;
         }
-        #scan-again-button {
+        /* Style untuk semua tombol */
+        .action-button {
             padding: 15px 30px;
-            font-size: 1em;
+            font-size: 1.2em;
             cursor: pointer;
             border-radius: 8px;
             border: none;
             background-color: #00ff7f;
             color: #111;
             margin-top: 20px;
+        }
+        #scan-again-button {
             display: none;
         }
     </style>
 </head>
 <body>
     <div id="qr-reader"></div>
-    <h2 id="status">Arahkan kamera ke QR Code Peserta</h2>
-    <button id="scan-again-button">Scan Peserta Berikutnya</button>
+    <h2 id="status">Selamat Datang Panitia</h2>
+    <button id="start-scan-button" class="action-button">Mulai Absensi</button>
+    <button id="scan-again-button" class="action-button">Scan Peserta Berikutnya</button>
 
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
@@ -56,12 +62,16 @@
 
             const statusElement = document.getElementById('status');
             const scanAgainButton = document.getElementById('scan-again-button');
+            const startScanButton = document.getElementById('start-scan-button');
+            const qrReaderDiv = document.getElementById('qr-reader');
             const html5QrCode = new Html5Qrcode("qr-reader");
+            let audioUnlocked = false;
 
             function ucapkanTeks(teks) {
+                if (!audioUnlocked) return; // Jangan bicara jika audio belum dibuka
                 window.speechSynthesis.cancel();
                 if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance(teks);
+                    const utterance = new SpeechSynthesisUtterterance(teks);
                     utterance.lang = 'id-ID';
                     utterance.rate = 0.9;
                     window.speechSynthesis.speak(utterance);
@@ -73,6 +83,7 @@
             function startScanner() {
                 statusElement.textContent = "Arahkan kamera ke QR Code Peserta";
                 scanAgainButton.style.display = 'none';
+                qrReaderDiv.style.display = 'block'; // Tampilkan area scanner
                 
                 html5QrCode.start(
                     { facingMode: "environment" },
@@ -86,37 +97,23 @@
 
             function onScanSuccess(decodedText, decodedResult) {
                 html5QrCode.stop().then(() => {
+                    qrReaderDiv.style.display = 'none'; // Sembunyikan scanner setelah berhasil
                     const params = new URLSearchParams(decodedText);
                     const namaPeserta = params.get('Nama') || 'Peserta';
                     statusElement.textContent = `Mengirim data untuk ${namaPeserta}...`;
 
-                    // --- BAGIAN INI TELAH DIUBAH ---
-                    // Opsi untuk format tanggal dan waktu di Jakarta
-                    const options = {
-                        timeZone: 'Asia/Jakarta',
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        hour12: false
-                    };
-                    
-                    // Buat formatter dan ubah tanggal menjadi string dengan format YYYY/MM/DD HH:mm:ss
-                    const formatter = new Intl.DateTimeFormat('sv-SE', options); // 'sv-SE' (Swedish) untuk format YYYY-MM-DD
-                    const timestamp = formatter.format(new Date()).replace(/-/g, '/');
-                    // --------------------------------
-
+                    const timestamp = new Date().toISOString();
                     const finalData = `${decodedText}&Kedatangan=${timestamp}`;
 
                     fetch(`${webhookUrl}?${finalData}`)
                         .then(response => {
                             if (response.ok) {
-                                statusElement.textContent = `✅ Absensi untuk ${namaPeserta} berhasil direkam!`;
+                                const successMessage = `✅ Absensi untuk ${namaPeserta} berhasil direkam!`;
+                                statusElement.textContent = successMessage;
                                 ucapkanTeks(`Telah diabsensi atas nama ${namaPeserta}`);
                             } else {
-                                statusElement.textContent = `❌ Gagal mengirim data untuk ${namaPeserta}.`;
+                                const errorMessage = `❌ Gagal mengirim data untuk ${namaPeserta}.`;
+                                statusElement.textContent = errorMessage;
                                 ucapkanTeks("Absensi gagal");
                             }
                             scanAgainButton.style.display = 'block';
@@ -129,9 +126,20 @@
                 });
             }
             
-            scanAgainButton.addEventListener('click', startScanner);
+            // --- LOGIKA BARU UNTUK MEMULAI ---
+            startScanButton.addEventListener('click', () => {
+                // "Buka Kunci" audio dengan memutar suara hening saat tombol ditekan
+                const utterance = new SpeechSynthesisUtterance(' ');
+                window.speechSynthesis.speak(utterance);
+                audioUnlocked = true;
 
-            startScanner();
+                // Sembunyikan tombol mulai dan jalankan scanner
+                startScanButton.style.display = 'none';
+                startScanner();
+            });
+
+            scanAgainButton.addEventListener('click', startScanner);
+            // Hapus pemanggilan startScanner() otomatis di awal
         });
     </script>
 </body>
