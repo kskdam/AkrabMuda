@@ -23,15 +23,13 @@
             border: 2px solid #00ff7f;
             border-radius: 8px;
             overflow: hidden;
-            /* Sembunyikan scanner di awal */
-            display: none;
+            display: none; /* Sembunyikan scanner di awal */
         }
         #status {
             margin-top: 20px;
             font-size: 1.2em;
             min-height: 50px;
         }
-        /* Style untuk semua tombol */
         .action-button {
             padding: 15px 30px;
             font-size: 1.2em;
@@ -56,10 +54,7 @@
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- PENGATURAN ---
             const webhookUrl = 'https://n8n-aa64.bgd.my.id/webhook/AkrabMuda';
-            // ------------------
-
             const statusElement = document.getElementById('status');
             const scanAgainButton = document.getElementById('scan-again-button');
             const startScanButton = document.getElementById('start-scan-button');
@@ -68,10 +63,11 @@
             let audioUnlocked = false;
 
             function ucapkanTeks(teks) {
-                if (!audioUnlocked) return; // Jangan bicara jika audio belum dibuka
+                if (!audioUnlocked) return;
                 window.speechSynthesis.cancel();
                 if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterterance(teks);
+                    // --- PERBAIKAN TYPO ADA DI SINI ---
+                    const utterance = new SpeechSynthesisUtterance(teks);
                     utterance.lang = 'id-ID';
                     utterance.rate = 0.9;
                     window.speechSynthesis.speak(utterance);
@@ -83,7 +79,7 @@
             function startScanner() {
                 statusElement.textContent = "Arahkan kamera ke QR Code Peserta";
                 scanAgainButton.style.display = 'none';
-                qrReaderDiv.style.display = 'block'; // Tampilkan area scanner
+                qrReaderDiv.style.display = 'block';
                 
                 html5QrCode.start(
                     { facingMode: "environment" },
@@ -97,7 +93,7 @@
 
             function onScanSuccess(decodedText, decodedResult) {
                 html5QrCode.stop().then(() => {
-                    qrReaderDiv.style.display = 'none'; // Sembunyikan scanner setelah berhasil
+                    qrReaderDiv.style.display = 'none';
                     const params = new URLSearchParams(decodedText);
                     const namaPeserta = params.get('Nama') || 'Peserta';
                     statusElement.textContent = `Mengirim data untuk ${namaPeserta}...`;
@@ -108,12 +104,10 @@
                     fetch(`${webhookUrl}?${finalData}`)
                         .then(response => {
                             if (response.ok) {
-                                const successMessage = `✅ Absensi untuk ${namaPeserta} berhasil direkam!`;
-                                statusElement.textContent = successMessage;
+                                statusElement.textContent = `✅ Absensi untuk ${namaPeserta} berhasil direkam!`;
                                 ucapkanTeks(`Telah diabsensi atas nama ${namaPeserta}`);
                             } else {
-                                const errorMessage = `❌ Gagal mengirim data untuk ${namaPeserta}.`;
-                                statusElement.textContent = errorMessage;
+                                statusElement.textContent = `❌ Gagal mengirim data untuk ${namaPeserta}.`;
                                 ucapkanTeks("Absensi gagal");
                             }
                             scanAgainButton.style.display = 'block';
@@ -126,20 +120,17 @@
                 });
             }
             
-            // --- LOGIKA BARU UNTUK MEMULAI ---
             startScanButton.addEventListener('click', () => {
-                // "Buka Kunci" audio dengan memutar suara hening saat tombol ditekan
+                // "Buka Kunci" audio dengan memutar suara hening
                 const utterance = new SpeechSynthesisUtterance(' ');
                 window.speechSynthesis.speak(utterance);
                 audioUnlocked = true;
 
-                // Sembunyikan tombol mulai dan jalankan scanner
                 startScanButton.style.display = 'none';
                 startScanner();
             });
 
             scanAgainButton.addEventListener('click', startScanner);
-            // Hapus pemanggilan startScanner() otomatis di awal
         });
     </script>
 </body>
