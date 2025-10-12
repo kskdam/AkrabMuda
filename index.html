@@ -61,14 +61,38 @@
             const qrReaderDiv = document.getElementById('qr-reader');
             const html5QrCode = new Html5Qrcode("qr-reader");
             let audioUnlocked = false;
+            let daftarSuara = [];
+
+            // --- FUNGSI BARU UNTUK MEMUAT DAFTAR SUARA ---
+            function muatDaftarSuara() {
+                daftarSuara = window.speechSynthesis.getVoices();
+            }
+            
+            // Panggil fungsi ini di awal dan saat daftar suara berubah
+            muatDaftarSuara();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = muatDaftarSuara;
+            }
+            // ---------------------------------------------
 
             function ucapkanTeks(teks) {
                 if (!audioUnlocked) return;
                 window.speechSynthesis.cancel();
                 if ('speechSynthesis' in window) {
-                    // --- PERBAIKAN TYPO ADA DI SINI ---
                     const utterance = new SpeechSynthesisUtterance(teks);
-                    utterance.lang = 'id-ID';
+                    
+                    // --- LOGIKA BARU UNTUK MEMILIH SUARA OTOMATIS ---
+                    const suaraIndonesia = daftarSuara.find(suara => suara.lang === 'id-ID');
+
+                    if (suaraIndonesia) {
+                        // Jika ditemukan suara Bahasa Indonesia, gunakan itu
+                        utterance.voice = suaraIndonesia;
+                    } else {
+                        // Jika tidak, gunakan pengaturan bahasa default (fallback)
+                        utterance.lang = 'id-ID';
+                    }
+                    // ------------------------------------------------
+
                     utterance.rate = 0.9;
                     window.speechSynthesis.speak(utterance);
                 } else {
@@ -121,11 +145,9 @@
             }
             
             startScanButton.addEventListener('click', () => {
-                // "Buka Kunci" audio dengan memutar suara hening
                 const utterance = new SpeechSynthesisUtterance(' ');
                 window.speechSynthesis.speak(utterance);
                 audioUnlocked = true;
-
                 startScanButton.style.display = 'none';
                 startScanner();
             });
