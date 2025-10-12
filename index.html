@@ -58,49 +58,60 @@
             const scanAgainButton = document.getElementById('scan-again-button');
             const html5QrCode = new Html5Qrcode("qr-reader");
 
+            // --- FUNGSI BARU UNTUK SUARA AI (TEXT-TO-SPEECH) ---
+            function ucapkanTeks(teks) {
+                // Hentikan suara sebelumnya jika masih ada
+                window.speechSynthesis.cancel();
+                
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(teks);
+                    utterance.lang = 'id-ID'; // Set bahasa ke Indonesia
+                    utterance.rate = 0.9;     // Atur kecepatan bicara (1 = normal)
+                    window.speechSynthesis.speak(utterance);
+                } else {
+                    console.log("Browser Anda tidak mendukung Text-to-Speech.");
+                }
+            }
+
             function startScanner() {
                 statusElement.textContent = "Arahkan kamera ke QR Code Peserta";
                 scanAgainButton.style.display = 'none';
                 
                 html5QrCode.start(
                     { facingMode: "environment" },
-                    {
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 }
-                    },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
                     onScanSuccess,
-                    (errorMessage) => { /* Abaikan error */ }
+                    () => {}
                 ).catch((err) => {
                     statusElement.textContent = "Gagal memulai kamera. Pastikan Anda memberikan izin.";
                 });
             }
 
             function onScanSuccess(decodedText, decodedResult) {
-                // Hentikan scanner setelah berhasil
                 html5QrCode.stop().then(() => {
                     const params = new URLSearchParams(decodedText);
                     const namaPeserta = params.get('Nama') || 'Peserta';
                     statusElement.textContent = `Mengirim data untuk ${namaPeserta}...`;
 
-                    // Buat timestamp saat ini
                     const timestamp = new Date().toISOString();
-
-                    // Gabungkan data dari QR code dengan timestamp
-                    // Data lokasi (latitude & longitude) sudah dihapus
                     const finalData = `${decodedText}&Kedatangan=${timestamp}`;
 
-                    // Kirim data ke webhook n8n
                     fetch(`${webhookUrl}?${finalData}`)
                         .then(response => {
                             if (response.ok) {
                                 statusElement.textContent = `✅ Absensi untuk ${namaPeserta} berhasil direkam!`;
+                                // --- PANGGIL FUNGSI SUARA DI SINI ---
+                                ucapkanTeks(`Telah diabsensi atas nama ${namaPeserta}`);
                             } else {
                                 statusElement.textContent = `❌ Gagal mengirim data untuk ${namaPeserta}.`;
+                                // Anda juga bisa menambahkan suara untuk notifikasi gagal jika mau
+                                ucapkanTeks("Absensi gagal");
                             }
-                            scanAgainButton.style.display = 'block'; // Tampilkan tombol scan lagi
+                            scanAgainButton.style.display = 'block';
                         })
                         .catch(error => {
                             statusElement.textContent = "Terjadi error saat mengirim data.";
+                            ucapkanTeks("Koneksi error");
                             scanAgainButton.style.display = 'block';
                         });
                 });
