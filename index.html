@@ -58,15 +58,12 @@
             const scanAgainButton = document.getElementById('scan-again-button');
             const html5QrCode = new Html5Qrcode("qr-reader");
 
-            // --- FUNGSI BARU UNTUK SUARA AI (TEXT-TO-SPEECH) ---
             function ucapkanTeks(teks) {
-                // Hentikan suara sebelumnya jika masih ada
                 window.speechSynthesis.cancel();
-                
                 if ('speechSynthesis' in window) {
                     const utterance = new SpeechSynthesisUtterance(teks);
-                    utterance.lang = 'id-ID'; // Set bahasa ke Indonesia
-                    utterance.rate = 0.9;     // Atur kecepatan bicara (1 = normal)
+                    utterance.lang = 'id-ID';
+                    utterance.rate = 0.9;
                     window.speechSynthesis.speak(utterance);
                 } else {
                     console.log("Browser Anda tidak mendukung Text-to-Speech.");
@@ -93,18 +90,33 @@
                     const namaPeserta = params.get('Nama') || 'Peserta';
                     statusElement.textContent = `Mengirim data untuk ${namaPeserta}...`;
 
-                    const timestamp = new Date().toISOString();
+                    // --- BAGIAN INI TELAH DIUBAH ---
+                    // Opsi untuk format tanggal dan waktu di Jakarta
+                    const options = {
+                        timeZone: 'Asia/Jakarta',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    };
+                    
+                    // Buat formatter dan ubah tanggal menjadi string dengan format YYYY/MM/DD HH:mm:ss
+                    const formatter = new Intl.DateTimeFormat('sv-SE', options); // 'sv-SE' (Swedish) untuk format YYYY-MM-DD
+                    const timestamp = formatter.format(new Date()).replace(/-/g, '/');
+                    // --------------------------------
+
                     const finalData = `${decodedText}&Kedatangan=${timestamp}`;
 
                     fetch(`${webhookUrl}?${finalData}`)
                         .then(response => {
                             if (response.ok) {
                                 statusElement.textContent = `✅ Absensi untuk ${namaPeserta} berhasil direkam!`;
-                                // --- PANGGIL FUNGSI SUARA DI SINI ---
                                 ucapkanTeks(`Telah diabsensi atas nama ${namaPeserta}`);
                             } else {
                                 statusElement.textContent = `❌ Gagal mengirim data untuk ${namaPeserta}.`;
-                                // Anda juga bisa menambahkan suara untuk notifikasi gagal jika mau
                                 ucapkanTeks("Absensi gagal");
                             }
                             scanAgainButton.style.display = 'block';
